@@ -26,9 +26,9 @@ public:
   String getID();
   bool settable();
   void processSet(String topic, String msg);
-  void sendValue(String topic, AsyncMqttClient* _mqttClient, bool direct = false);
-  void sendRemoveConfig(String topic, AsyncMqttClient* _mqttClient);
-  void sendConfig(String topic, AsyncMqttClient* _mqttClient);
+  void publishValue(String topic, AsyncMqttClient* _mqttClient, bool direct = false);
+  void unpublishConfig(String topic, AsyncMqttClient* _mqttClient);
+  void publishConfig(String topic, AsyncMqttClient* _mqttClient);
 private:
   String _name;  
   String _description;  
@@ -49,11 +49,12 @@ public:
   HOMIE_Node& description(String description);
   HOMIE_Node& type(String type);
   void addProperty(HOMIE_Property* prop);
+  void removeProperties();
   String getName();
   void processSet(String topic, String msg);
-  void sendValue(String topic, AsyncMqttClient* _mqttClient, HOMIE_Property* ident = nullptr);
-  void sendRemoveConfig(String topic, AsyncMqttClient* _mqttClient);
-  void sendConfig(String topic, AsyncMqttClient* _mqttClient);
+  void publishValue(String topic, AsyncMqttClient* _mqttClient, HOMIE_Property* ident = nullptr);
+  void unpublishConfig(String topic, AsyncMqttClient* _mqttClient);
+  void publishConfig(String topic, AsyncMqttClient* _mqttClient);
 private:
   String _name;
   String _description;
@@ -88,7 +89,6 @@ private:
   //void onDisconnect(AsyncMqttClientDisconnectReason reason);
   void onMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
   void Heartbeat();
-  void publishRemoveNode(HOMIE_Node* node);
   void publish(String topic, const char* msg, bool retain = false);
   void publish(String topic, String msg, bool retain = false);
   void publish(String topic, int data, bool retain = false);

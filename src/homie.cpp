@@ -89,7 +89,7 @@ void HOMIE_Property::processSet(String topic, String msg) {
   }
 }
 
-void HOMIE_Property::sendValue(String topic, AsyncMqttClient* mqttClient, bool direct) {
+void HOMIE_Property::publishValue(String topic, AsyncMqttClient* mqttClient, bool direct) {
   if(_only_direct && !direct) {
     return;
   }
@@ -100,7 +100,7 @@ void HOMIE_Property::sendValue(String topic, AsyncMqttClient* mqttClient, bool d
   }
 }
 
-void HOMIE_Property::sendRemoveConfig(String topic, AsyncMqttClient* mqttClient) {
+void HOMIE_Property::unpublishConfig(String topic, AsyncMqttClient* mqttClient) {
   String my_topic = topic + String("/") + _name;
   //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
   mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, "");
@@ -114,7 +114,7 @@ void HOMIE_Property::sendRemoveConfig(String topic, AsyncMqttClient* mqttClient)
   }
 }
 
-void HOMIE_Property::sendConfig(String topic, AsyncMqttClient* mqttClient) {
+void HOMIE_Property::publishConfig(String topic, AsyncMqttClient* mqttClient) {
   String my_topic = topic + String("/") + _name;
   //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
   mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, _description.c_str());
@@ -154,6 +154,10 @@ void HOMIE_Node::addProperty(HOMIE_Property* prop) {
   _properties.push_back(prop);
 }
 
+void HOMIE_Node::removeProperties() {
+  _properties.clear();
+}
+
 String HOMIE_Node::getName() {
   return(_name);
 }
@@ -172,28 +176,28 @@ void HOMIE_Node::processSet(String topic, String msg) {
   }
 }
 
-void HOMIE_Node::sendValue(String topic, AsyncMqttClient* mqttClient, HOMIE_Property* ident) {
+void HOMIE_Node::publishValue(String topic, AsyncMqttClient* mqttClient, HOMIE_Property* ident) {
   String new_topic = topic + String("/") + _name;
   for(auto it : _properties) {
     if(!ident) {
-      it->sendValue(new_topic, mqttClient);
+      it->publishValue(new_topic, mqttClient);
     } else if(ident == it) {
-      it->sendValue(new_topic, mqttClient, true);
+      it->publishValue(new_topic, mqttClient, true);
     }
   }
 }
 
-void HOMIE_Node::sendRemoveConfig(String topic, AsyncMqttClient* mqttClient) {
+void HOMIE_Node::unpublishConfig(String topic, AsyncMqttClient* mqttClient) {
   String new_topic = topic + String("/") + _name;
   mqttClient->publish( (new_topic + String("/$name")).c_str(), 1, true, "");
   mqttClient->publish( (new_topic + String("/$type")).c_str(), 1, true, "");
   mqttClient->publish( (new_topic + String("/$properties")).c_str(), 1, true, "");
   for(auto it : _properties) {
-    it->sendRemoveConfig(new_topic, mqttClient);
+    it->unpublishConfig(new_topic, mqttClient);
   }
 }
 
-void HOMIE_Node::sendConfig(String topic, AsyncMqttClient* mqttClient) {
+void HOMIE_Node::publishConfig(String topic, AsyncMqttClient* mqttClient) {
   String new_topic = topic + String("/") + _name;
   mqttClient->publish( (new_topic + String("/$name")).c_str(), 1, true, _description.c_str());
   mqttClient->publish( (new_topic + String("/$type")).c_str(), 1, true, _type.c_str());
@@ -206,7 +210,7 @@ void HOMIE_Node::sendConfig(String topic, AsyncMqttClient* mqttClient) {
   }
   mqttClient->publish( (new_topic + String("/$properties")).c_str(), 1, true, props.c_str());
   for(auto it : _properties) {
-    it->sendConfig(new_topic, mqttClient);
+    it->publishConfig(new_topic, mqttClient);
   }
 }
 
@@ -235,7 +239,8 @@ bool HOMIE_Device::removeNode(String name) {
   if(!p) {
     return false;
   }
-  publishRemoveNode(p);
+  p->unpublishConfig(_fullbase, _mqttClient);
+
   /*
   std::erase_if(_nodes, [&name] (const HOMIE_Node& n) { return n.getName() == name; });
   */
@@ -273,7 +278,7 @@ void HOMIE_Device::onConnect(bool sessionPresent) {
   Serial.println(sessionPresent);
   publishConfig();
   for(auto it : _nodes) {
-    it->sendValue(_fullbase, _mqttClient);
+    it->publishValue(_fullbase, _mqttClient);
   }
   xTimerStart(_mqttHeartbeatTimer, 0);
 }
@@ -359,10 +364,6 @@ void HOMIE_Device::connect() {
   }
 }
 
-void HOMIE_Device::publishRemoveNode(HOMIE_Node* node) {
-  node->sendRemoveConfig(_fullbase, _mqttClient);
-}
-
 void HOMIE_Device::publishConfig() {
   publish(_fullbase + String("/$state"), "init", true);
   publish(_fullbase + String("/$homie"), "3.0.0", true);
@@ -384,7 +385,7 @@ void HOMIE_Device::publishConfig() {
   }
   publish(_fullbase + String("/$nodes"), nodes, true);
   for(auto it : _nodes) {
-    it->sendConfig(_fullbase, _mqttClient);
+    it->publishConfig(_fullbase, _mqttClient);
   }
   publish(_fullbase + String("/$state"), "ready", true);
 }
@@ -415,6 +416,6 @@ void HOMIE_Device::sendUpdates(HOMIE_Property* ident) {
     return;
   }
   for(auto it : _nodes) {
-    it->sendValue(_fullbase, _mqttClient, ident);
+    it->publishValue(_fullbase, _mqttClient, ident);
   }
 }
