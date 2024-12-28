@@ -16,6 +16,7 @@ HOMIE_Property::HOMIE_Property(String name) : _name(name) {
   _datatype = String("integer");
   _format = String("");
   _unit = "";
+  _ID = _name;
   _only_direct = false;
 }
 
@@ -44,6 +45,11 @@ HOMIE_Property& HOMIE_Property::format(String format) {
   return *this;
 }
 
+HOMIE_Property& HOMIE_Property::ID(String id) {
+  _ID = id;
+  return *this;
+}
+
 HOMIE_Property& HOMIE_Property::setSetCallback(void (*callback)(HOMIE_Property* prop, String msg)) {
   _set_callback = callback;
   return *this;
@@ -64,6 +70,10 @@ String HOMIE_Property::getDatatype() {
 
 String HOMIE_Property::getFormat() {
   return _format;
+}
+
+String HOMIE_Property::getID() {
+  return(_ID);
 }
 
 bool HOMIE_Property::settable() {
