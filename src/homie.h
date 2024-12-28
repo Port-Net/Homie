@@ -72,6 +72,7 @@ public:
   void setHeartbeatInterval(uint32_t hb_time_ms);
   void sendUpdates(HOMIE_Property* ident = nullptr);
   void connect();
+  void publishConfig();
 //protected:
 //  void publish_int(const char* subtopic, int data);
 //  void publish_float(const char* subtopic, float data);
@@ -88,7 +89,6 @@ private:
   void onMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
   void Heartbeat();
   void publishRemoveNode(HOMIE_Node* node);
-  void publishConfig();
   void publish(String topic, const char* msg, bool retain = false);
   void publish(String topic, String msg, bool retain = false);
   void publish(String topic, int data, bool retain = false);
