@@ -90,6 +90,20 @@ void HOMIE_Property::sendValue(String topic, AsyncMqttClient* mqttClient, bool d
   }
 }
 
+void HOMIE_Property::sendRemoveConfig(String topic, AsyncMqttClient* mqttClient) {
+  String my_topic = topic + String("/") + _name;
+  //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
+  mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, "");
+  mqttClient->publish( (my_topic + String("/$settable")).c_str(), 1, true, "");
+  mqttClient->publish( (my_topic + String("/$datatype")).c_str(), 1, true, "");
+  if(_format != "") {
+    mqttClient->publish( (my_topic + String("/$format")).c_str(), 1, true, "");
+  }
+  if(_unit != "") {
+    mqttClient->publish( (my_topic + String("/$unit")).c_str(), 1, true, "");
+  }
+}
+
 void HOMIE_Property::sendConfig(String topic, AsyncMqttClient* mqttClient) {
   String my_topic = topic + String("/") + _name;
   //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
@@ -159,6 +173,16 @@ void HOMIE_Node::sendValue(String topic, AsyncMqttClient* mqttClient, HOMIE_Prop
   }
 }
 
+void HOMIE_Node::sendRemoveConfig(String topic, AsyncMqttClient* mqttClient) {
+  String new_topic = topic + String("/") + _name;
+  mqttClient->publish( (new_topic + String("/$name")).c_str(), 1, true, "");
+  mqttClient->publish( (new_topic + String("/$type")).c_str(), 1, true, "");
+  mqttClient->publish( (new_topic + String("/$properties")).c_str(), 1, true, "");
+  for(auto it : _properties) {
+    it->sendRemoveConfig(new_topic, mqttClient);
+  }
+}
+
 void HOMIE_Node::sendConfig(String topic, AsyncMqttClient* mqttClient) {
   String new_topic = topic + String("/") + _name;
   mqttClient->publish( (new_topic + String("/$name")).c_str(), 1, true, _description.c_str());
@@ -190,6 +214,26 @@ HOMIE_Device& HOMIE_Device::addNode(HOMIE_Node* node) {
   return *this;
 }
 
+bool HOMIE_Device::removeNode(String name) {
+  HOMIE_Node* p = nullptr;
+  //auto p = std::find_if(_nodes.begin(), _nodes.end(), [&name] (const HOMIE_Node &n) { return n.getName() == name; });
+  for(auto it : _nodes) {
+    if(it->getName() == name) {
+      p = it;
+    }
+  }
+  if(!p) {
+    return false;
+  }
+  publishRemoveNode(p);
+  /*
+  std::erase_if(_nodes, [&name] (const HOMIE_Node& n) { return n.getName() == name; });
+  */
+  std::erase(_nodes, p);
+  publishConfig();
+  return true;
+}
+
 HOMIE_Device& HOMIE_Device::setFirmware(String fw) {
   _firmware = fw;
   return *this;
@@ -217,29 +261,7 @@ void HOMIE_Device::onConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
-  publish(_fullbase + String("/$state"), "init", true);
-  publish(_fullbase + String("/$homie"), "3.0.0", true);
-  publish(_fullbase + String("/$name"), _name, true);
-  publish(_fullbase + String("/$localip"), WiFi.localIP().toString(), true);
-  publish(_fullbase + String("/$mac"), WiFi.macAddress(), true);
-  publish(_fullbase + String("/$fw/name"), _firmware, true);
-  publish(_fullbase + String("/$fw/version"), _version, true);
-  publish(_fullbase + String("/$implementation"), "arduino esp32", true);
-  publish(_fullbase + String("/$stats"), "uptime", true);
-  publish(_fullbase + String("/$stats/uptime"), millis()/1000, true);
-  publish(_fullbase + String("/$stats/interval"), _heartbeat_interval_ms/1000, true);
-  String nodes = String("");
-  for(auto it : _nodes) {
-    if(!nodes.isEmpty()) {
-      nodes += String(",");
-    }
-    nodes += it->getName();
-  }
-  publish(_fullbase + String("/$nodes"), nodes, true);
-  for(auto it : _nodes) {
-    it->sendConfig(_fullbase, _mqttClient);
-  }
-  publish(_fullbase + String("/$state"), "ready", true);
+  publishConfig();
   for(auto it : _nodes) {
     it->sendValue(_fullbase, _mqttClient);
   }
@@ -325,6 +347,36 @@ void HOMIE_Device::connect() {
       _mqttClient->connect();
     }
   }
+}
+
+void HOMIE_Device::publishRemoveNode(HOMIE_Node* node) {
+  node->sendRemoveConfig(_fullbase, _mqttClient);
+}
+
+void HOMIE_Device::publishConfig() {
+  publish(_fullbase + String("/$state"), "init", true);
+  publish(_fullbase + String("/$homie"), "3.0.0", true);
+  publish(_fullbase + String("/$name"), _name, true);
+  publish(_fullbase + String("/$localip"), WiFi.localIP().toString(), true);
+  publish(_fullbase + String("/$mac"), WiFi.macAddress(), true);
+  publish(_fullbase + String("/$fw/name"), _firmware, true);
+  publish(_fullbase + String("/$fw/version"), _version, true);
+  publish(_fullbase + String("/$implementation"), "arduino esp32", true);
+  publish(_fullbase + String("/$stats"), "uptime", true);
+  publish(_fullbase + String("/$stats/uptime"), millis()/1000, true);
+  publish(_fullbase + String("/$stats/interval"), _heartbeat_interval_ms/1000, true);
+  String nodes = String("");
+  for(auto it : _nodes) {
+    if(!nodes.isEmpty()) {
+      nodes += String(",");
+    }
+    nodes += it->getName();
+  }
+  publish(_fullbase + String("/$nodes"), nodes, true);
+  for(auto it : _nodes) {
+    it->sendConfig(_fullbase, _mqttClient);
+  }
+  publish(_fullbase + String("/$state"), "ready", true);
 }
 
 void HOMIE_Device::publish(String topic, const char* msg, bool retain) {
