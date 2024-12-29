@@ -364,6 +364,10 @@ void HOMIE_Device::connect() {
   }
 }
 
+bool HOMIE_Device::connected() {
+  return _mqttClient->connected();
+}
+
 void HOMIE_Device::publishConfig() {
   publish(_fullbase + String("/$state"), "init", true);
   publish(_fullbase + String("/$homie"), "3.0.0", true);

@@ -73,6 +73,7 @@ public:
   void setHeartbeatInterval(uint32_t hb_time_ms);
   void sendUpdates(HOMIE_Property* ident = nullptr);
   void connect();
+  bool connected();
   void publishConfig();
 //protected:
 //  void publish_int(const char* subtopic, int data);
