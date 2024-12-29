@@ -45,6 +45,11 @@ HOMIE_Property& HOMIE_Property::format(String format) {
   return *this;
 }
 
+HOMIE_Property& HOMIE_Property::unit(String unit) {
+  _unit = unit;
+  return *this;
+}
+
 HOMIE_Property& HOMIE_Property::ID(String id) {
   _ID = id;
   return *this;
@@ -70,6 +75,10 @@ String HOMIE_Property::getDatatype() {
 
 String HOMIE_Property::getFormat() {
   return _format;
+}
+
+String HOMIE_Property::getUnit() {
+  return _unit;
 }
 
 String HOMIE_Property::getID() {

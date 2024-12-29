@@ -17,12 +17,14 @@ public:
   HOMIE_Property& onlyDirect(bool direct);
   HOMIE_Property& datatype(String datatype);
   HOMIE_Property& format(String format);
+  HOMIE_Property& unit(String unit);
   HOMIE_Property& ID(String id);
   HOMIE_Property& setSetCallback(void (*callback)(HOMIE_Property* prop, String msg));
   HOMIE_Property& setGetCallback(String (*callback)(HOMIE_Property* prop));
   String getName();
   String getDatatype();
   String getFormat();
+  String getUnit();
   String getID();
   bool settable();
   void processSet(String topic, String msg);
