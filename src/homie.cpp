@@ -282,9 +282,9 @@ void HOMIE_Device::s_onConnect(bool sessionPresent) {
 }
 
 void HOMIE_Device::onConnect(bool sessionPresent) {
-  Serial.println("Connected to MQTT.");
-  Serial.print("Session present: ");
-  Serial.println(sessionPresent);
+  //Serial.println("Connected to MQTT.");
+  //Serial.print("Session present: ");
+  //Serial.println(sessionPresent);
   publishConfig();
   for(auto it : _nodes) {
     it->publishValue(_fullbase, _mqttClient);
