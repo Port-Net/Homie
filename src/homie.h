@@ -74,6 +74,7 @@ public:
   void sendUpdates(HOMIE_Property* ident = nullptr);
   void connect();
   bool connected();
+  int reconnectCount();
   void publishConfig();
 //protected:
 //  void publish_int(const char* subtopic, int data);
@@ -96,6 +97,7 @@ private:
   //static MY_MQTT* __our_obj;
   char _mqtt_server[50];
   uint16_t _mqtt_port;
+  int _reconnect_count;
   String _name;
   String _firmware;
   String _version;

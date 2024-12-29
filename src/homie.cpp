@@ -281,6 +281,7 @@ void HOMIE_Device::onConnect(bool sessionPresent) {
     it->publishValue(_fullbase, _mqttClient);
   }
   xTimerStart(_mqttHeartbeatTimer, 0);
+  _reconnect_count = 0;
 }
 
 void HOMIE_Device::s_onDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -319,6 +320,7 @@ void HOMIE_Device::Heartbeat() {
     // TODO handle additional stats
   } else {
     if (WiFi.isConnected()) {
+      _reconnect_count++;
       _mqttClient->connect();
     }
   }
@@ -366,6 +368,10 @@ void HOMIE_Device::connect() {
 
 bool HOMIE_Device::connected() {
   return _mqttClient->connected();
+}
+
+int HOMIE_Device::reconnectCount() {
+  return _reconnect_count;
 }
 
 void HOMIE_Device::publishConfig() {
