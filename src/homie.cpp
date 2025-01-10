@@ -13,6 +13,7 @@ HOMIE_Property::HOMIE_Property(String name) : _name(name) {
   _description = name;
   _name.toLowerCase();
   _settable = false;
+  _retained = false;
   _datatype = String("integer");
   _format = String("");
   _unit = "";
@@ -27,6 +28,12 @@ HOMIE_Property& HOMIE_Property::description(String description) {
 
 HOMIE_Property& HOMIE_Property::settable(bool settable) {
   _settable = settable;
+  return *this;
+}
+
+HOMIE_Property& HOMIE_Property::retained(bool retained) {
+  _retained = retained;
+  _retained_set = true;
   return *this;
 }
 
@@ -89,6 +96,10 @@ bool HOMIE_Property::settable() {
   return _settable;
 }
 
+bool HOMIE_Property::retained() {
+  return _retained;
+}
+
 void HOMIE_Property::processSet(String topic, String msg) {
   if(topic != _name + String("/set")) {
     return;
@@ -105,7 +116,7 @@ void HOMIE_Property::publishValue(String topic, AsyncMqttClient* mqttClient, boo
   String my_topic = topic + String("/") + _name;
   if(_get_callback) {
     String msg = _get_callback(this);
-    mqttClient->publish(my_topic.c_str(), 1, false, msg.c_str());
+    mqttClient->publish(my_topic.c_str(), 1, _retained, msg.c_str());
   }
 }
 
@@ -128,6 +139,9 @@ void HOMIE_Property::publishConfig(String topic, AsyncMqttClient* mqttClient) {
   //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
   mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, _description.c_str());
   mqttClient->publish( (my_topic + String("/$settable")).c_str(), 1, true, _settable ? "true" : "false");
+  if(_retained_set) {
+    mqttClient->publish( (my_topic + String("/$retained")).c_str(), 1, true, _retained ? "true" : "false");
+  }
   mqttClient->publish( (my_topic + String("/$datatype")).c_str(), 1, true, _datatype.c_str());
   if(_format != "") {
     mqttClient->publish( (my_topic + String("/$format")).c_str(), 1, true, _format.c_str());
@@ -330,6 +344,15 @@ void HOMIE_Device::Heartbeat() {
   } else {
     if (WiFi.isConnected()) {
       _reconnect_count++;
+      if(_reconnect_count > 10) {
+        delete _mqttClient;
+        _mqttClient = new AsyncMqttClient();
+        _mqttClient->setServer(_mqtt_server, _mqtt_port);
+        _mqttClient->setWill(_will_topic, 1, true, "lost");
+        _mqttClient->onConnect(s_onConnect);
+        _mqttClient->onDisconnect(s_onDisconnect);
+        _mqttClient->onMessage(s_onMessage);
+      }
       _mqttClient->connect();
     }
   }
@@ -344,10 +367,9 @@ void HOMIE_Device::begin(String name, String base) {
   _name = name;
   _base = base;
   _fullbase = base + String("/") + name;
-  _mqttClient = new AsyncMqttClient();
-  static char server[50];
-  _mqttClient->setServer(_mqtt_server, _mqtt_port);
   strncpy(_will_topic, (_fullbase + String("/$state")).c_str(), sizeof(_will_topic)); // we need permanent allocated char*
+  _mqttClient = new AsyncMqttClient();
+  _mqttClient->setServer(_mqtt_server, _mqtt_port);
   _mqttClient->setWill(_will_topic, 1, true, "lost");
   _mqttClient->onConnect(s_onConnect);
   _mqttClient->onDisconnect(s_onDisconnect);
@@ -385,7 +407,7 @@ int HOMIE_Device::reconnectCount() {
 
 void HOMIE_Device::publishConfig() {
   publish(_fullbase + String("/$state"), "init", true);
-  publish(_fullbase + String("/$homie"), "3.0.0", true);
+  publish(_fullbase + String("/$homie"), "3.0.1", true);
   publish(_fullbase + String("/$name"), _name, true);
   publish(_fullbase + String("/$localip"), WiFi.localIP().toString(), true);
   publish(_fullbase + String("/$mac"), WiFi.macAddress(), true);

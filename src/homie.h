@@ -14,6 +14,7 @@ public:
   HOMIE_Property(String name);
   HOMIE_Property& description(String description);
   HOMIE_Property& settable(bool settable);
+  HOMIE_Property& retained(bool retained);
   HOMIE_Property& onlyDirect(bool direct);
   HOMIE_Property& datatype(String datatype);
   HOMIE_Property& format(String format);
@@ -27,6 +28,7 @@ public:
   String getUnit();
   String getID();
   bool settable();
+  bool retained();
   void processSet(String topic, String msg);
   void publishValue(String topic, AsyncMqttClient* _mqttClient, bool direct = false);
   void unpublishConfig(String topic, AsyncMqttClient* _mqttClient);
@@ -36,6 +38,8 @@ private:
   String _description;  
   String _ID;  
   bool _settable;
+  bool _retained;
+  bool _retained_set;
   String _datatype;  
   String _format;
   String _unit;
