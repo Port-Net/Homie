@@ -396,6 +396,7 @@ void HOMIE_Device::connect() {
       return;
     }
     if(WiFi.isConnected()) {
+      _reconnect_count++;
       _mqttClient->connect();
     }
   }
