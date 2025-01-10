@@ -244,6 +244,7 @@ HOMIE_Device::HOMIE_Device(String mqtt_server, uint16_t mqtt_port) : _mqtt_port(
   strncpy(_mqtt_server, mqtt_server.c_str(), sizeof(_mqtt_server)); // we need permanent allocated char*
   _mqttClient = nullptr;
   _heartbeat_interval_ms = MQTT_HEARTBEAT;
+  _reconnect_count = 0;
 }
 
 HOMIE_Device& HOMIE_Device::addNode(HOMIE_Node* node) {
