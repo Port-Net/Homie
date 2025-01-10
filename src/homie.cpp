@@ -13,7 +13,7 @@ HOMIE_Property::HOMIE_Property(String name) : _name(name) {
   _description = name;
   _name.toLowerCase();
   _settable = false;
-  _retained = false;
+  _retained = true;
   _datatype = String("integer");
   _format = String("");
   _unit = "";
@@ -33,7 +33,6 @@ HOMIE_Property& HOMIE_Property::settable(bool settable) {
 
 HOMIE_Property& HOMIE_Property::retained(bool retained) {
   _retained = retained;
-  _retained_set = true;
   return *this;
 }
 
@@ -139,8 +138,8 @@ void HOMIE_Property::publishConfig(String topic, AsyncMqttClient* mqttClient) {
   //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
   mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, _description.c_str());
   mqttClient->publish( (my_topic + String("/$settable")).c_str(), 1, true, _settable ? "true" : "false");
-  if(_retained_set) {
-    mqttClient->publish( (my_topic + String("/$retained")).c_str(), 1, true, _retained ? "true" : "false");
+  if(!_retained) {
+    mqttClient->publish( (my_topic + String("/$retained")).c_str(), 1, true, "false");
   }
   mqttClient->publish( (my_topic + String("/$datatype")).c_str(), 1, true, _datatype.c_str());
   if(_format != "") {
@@ -178,6 +177,9 @@ void HOMIE_Node::addProperty(HOMIE_Property* prop) {
 }
 
 void HOMIE_Node::removeProperties() {
+  for(auto it : _properties) {
+    delete it;
+  }
   _properties.clear();
 }
 
@@ -264,11 +266,12 @@ bool HOMIE_Device::removeNode(String name) {
     return false;
   }
   p->unpublishConfig(_fullbase, _mqttClient);
-
+  p->removeProperties();
   /*
   std::erase_if(_nodes, [&name] (const HOMIE_Node& n) { return n.getName() == name; });
   */
   std::erase(_nodes, p);
+  delete p;
   publishConfig();
   return true;
 }

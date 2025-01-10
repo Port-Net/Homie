@@ -39,7 +39,6 @@ private:
   String _ID;  
   bool _settable;
   bool _retained;
-  bool _retained_set;
   String _datatype;  
   String _format;
   String _unit;
