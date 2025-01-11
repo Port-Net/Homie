@@ -11,16 +11,16 @@
 
 HOMIE_Property::HOMIE_Property(const char* name) {
   strncpy(_name, name, sizeof(_name));
-  strncpy(_description, name, sizeof(_description));
-  for(int i = 0; strlen(_name); ++i) {
+  for(int i = 0; i < strlen(_name); ++i) {
     _name[i] = tolower(_name[i]);
   }
+  description(name);
   _settable = false;
   _retained = true;
-  strncpy(_datatype, "integer", sizeof(_datatype));
-  _format[0] = '\0';
-  _unit[0] = '\0';
-  strncpy(_ID, _name, sizeof(_ID));
+  datatype("integer");
+  format("");
+  unit("");
+  ID(_name);
   _only_direct = false;
 }
 
@@ -195,11 +195,11 @@ void HOMIE_Property::sub_publish(AsyncMqttClient* mqttClient, const char* topic,
 
 HOMIE_Node::HOMIE_Node(const char* name) {
   strncpy(_name, name, sizeof(_name));
-  strncpy(_description, name, sizeof(_description));
-  for(int i = 0; strlen(_name); ++i) {
+  for(int i = 0; i < strlen(_name); ++i) {
     _name[i] = tolower(_name[i]);
   }
-  _type[0] = '\0';
+  description(name);
+  type("");
 }
 
 HOMIE_Node& HOMIE_Node::description(const char* name) {
