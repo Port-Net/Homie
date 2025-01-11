@@ -22,6 +22,8 @@ HOMIE_Property::HOMIE_Property(const char* name) {
   unit("");
   ID(_name);
   _only_direct = false;
+  _get_callback = nullptr;
+  _set_callback = nullptr;
 }
 
 HOMIE_Property& HOMIE_Property::description(const char* description) {
