@@ -73,7 +73,7 @@ class HOMIE_Device {
 public:
   HOMIE_Device(const char* mqtt_server, uint16_t mqtt_port = 1883);
   HOMIE_Device& addNode(HOMIE_Node* node);
-  bool removeNode(String name);
+  bool removeNode(const char* name);
   HOMIE_Device& setFirmware(const char* fw);
   HOMIE_Device& setVersion(const char* ver);
   void begin(const char* name, const char* base = "homie");
@@ -83,10 +83,6 @@ public:
   bool connected();
   int reconnectCount();
   void publishConfig();
-//protected:
-//  void publish_int(const char* subtopic, int data);
-//  void publish_float(const char* subtopic, float data);
-//  void addCallback(void (*func)(String topic, String msg));
 private:
   static HOMIE_Device* getThis( HOMIE_Device* me = nullptr);
   static void s_connect();
@@ -99,7 +95,6 @@ private:
   void onMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
   void Heartbeat();
   void sub_publish(const char* subtopic, const char* msg, bool retain = false);
-  void sub_publish(const char* subtopic, String msg, bool retain = false);
   void sub_publish(const char* subtopic, int data, bool retain = false);
   //static MY_MQTT* __our_obj;
   char _mqtt_server[50];
