@@ -149,10 +149,10 @@ void HOMIE_Property::unpublishConfig(const char* topic, AsyncMqttClient* mqttCli
   if(!_retained) {
     sub_publish(mqttClient, my_topic, "/$retained", "", true);
   }
-  if(_format != "") {
+  if(strlen(_format)) {
     sub_publish(mqttClient, my_topic, "/$format", "", true);
   }
-  if(_unit != "") {
+  if(strlen(_unit)) {
     sub_publish(mqttClient, my_topic, "/$unit", "", true);
   }
 }
@@ -168,10 +168,10 @@ void HOMIE_Property::publishConfig(const char* topic, AsyncMqttClient* mqttClien
     sub_publish(mqttClient, my_topic, "/$retained", "false", true);
   }
   sub_publish(mqttClient, my_topic, "/$datatype", _datatype, true);
-  if(_format != "") {
+  if(strlen(_format)) {
     sub_publish(mqttClient, my_topic, "/$format", _format, true);
   }
-  if(_unit != "") {
+  if(strlen(_unit)) {
     sub_publish(mqttClient, my_topic, "/$unit", _unit, true);
   }
   if(_settable) {
