@@ -185,7 +185,7 @@ void HOMIE_Property::sub_publish(AsyncMqttClient* mqttClient, const char* topic,
   if (!mqttClient->connected()) {
     return;
   }
-  char new_subtopic[sizeof(topic) + sizeof(subtopic) + 2];
+  char new_subtopic[strlen(topic) + strlen(subtopic) + 2];
   strncpy(new_subtopic, topic, sizeof(new_subtopic));
   strncat(new_subtopic, subtopic, sizeof(new_subtopic) - strlen(new_subtopic));
   mqttClient->publish(new_subtopic, 1, retain, msg);
@@ -298,7 +298,7 @@ void HOMIE_Node::sub_publish(AsyncMqttClient* mqttClient, const char* topic, con
   if (!mqttClient->connected()) {
     return;
   }
-  char new_subtopic[sizeof(topic) + sizeof(subtopic) + 2];
+  char new_subtopic[strlen(topic) + strlen(subtopic) + 2];
   strncpy(new_subtopic, topic, sizeof(new_subtopic));
   strncat(new_subtopic, subtopic, sizeof(new_subtopic) - strlen(new_subtopic));
   mqttClient->publish(new_subtopic, 1, retain, msg);
