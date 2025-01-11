@@ -1,6 +1,6 @@
 {
     "name": "Homie",
-    "version": "0.7.0",
+    "version": "0.7.3",
     "description": "Library to control MQT Homie device",
     "keywords": "homie mqtt",
     "homepage": "https://github.com/Port-Net/Homie",

@@ -265,7 +265,7 @@ bool HOMIE_Device::removeNode(String name) {
   if(!p) {
     return false;
   }
-  p->unpublishConfig(_fullbase, _mqttClient);
+  p->unpublishConfig(String(_fullbase), _mqttClient);
   p->removeProperties();
   /*
   std::erase_if(_nodes, [&name] (const HOMIE_Node& n) { return n.getName() == name; });
@@ -277,12 +277,12 @@ bool HOMIE_Device::removeNode(String name) {
 }
 
 HOMIE_Device& HOMIE_Device::setFirmware(String fw) {
-  _firmware = fw;
+  strncpy(_firmware, fw.c_str(), sizeof(_firmware));
   return *this;
 }
 
 HOMIE_Device& HOMIE_Device::setVersion(String ver) {
-  _version = ver;
+  strncpy(_version, ver.c_str(), sizeof(_version));
   return *this;
 }
 
@@ -305,7 +305,7 @@ void HOMIE_Device::onConnect(bool sessionPresent) {
   //Serial.println(sessionPresent);
   publishConfig();
   for(auto it : _nodes) {
-    it->publishValue(_fullbase, _mqttClient);
+    it->publishValue(String(_fullbase), _mqttClient);
   }
   xTimerStart(_mqttHeartbeatTimer, 0);
   _reconnect_count = 0;
@@ -328,10 +328,10 @@ void HOMIE_Device::onMessage(char* topic, char* payload, AsyncMqttClientMessageP
   pl[len] = '\0';
   strncpy(pl, payload, len);
   String payloadstring(pl);
-  if(!topicstring.startsWith(_fullbase + String("/"))) {
+  if(!topicstring.startsWith(String(_fullbase) + "/")) {
     return;
   }
-  topicstring = topicstring.substring(_fullbase.length() + 1);
+  topicstring = topicstring.substring(strlen(_fullbase) + 1);
   for(auto it : _nodes) {
     it->processSet(topicstring, payloadstring);
   }
@@ -343,7 +343,7 @@ void HOMIE_Device::s_Heartbeat() {
 
 void HOMIE_Device::Heartbeat() {
   if (_mqttClient->connected()) {
-    publish( _fullbase + String("/$stats/uptime"), millis()/1000, true);
+    sub_publish("/$stats/uptime", millis()/1000, true);
     // TODO handle additional stats
   } else {
     if (WiFi.isConnected()) {
@@ -352,7 +352,7 @@ void HOMIE_Device::Heartbeat() {
         delete _mqttClient;
         _mqttClient = new AsyncMqttClient();
         _mqttClient->setServer(_mqtt_server, _mqtt_port);
-        _mqttClient->setWill(_will_topic, 1, true, "lost");
+        _mqttClient->setWill(_will_topic, 1, true, _last_will);
         _mqttClient->onConnect(s_onConnect);
         _mqttClient->onDisconnect(s_onDisconnect);
         _mqttClient->onMessage(s_onMessage);
@@ -368,13 +368,12 @@ void HOMIE_Device::setHeartbeatInterval(uint32_t hb_time_ms) {
 
 
 void HOMIE_Device::begin(String name, String base) {
-  _name = name;
-  _base = base;
-  _fullbase = base + String("/") + name;
-  strncpy(_will_topic, (_fullbase + String("/$state")).c_str(), sizeof(_will_topic)); // we need permanent allocated char*
+  strncpy(_name, name.c_str(), sizeof(_name));
+  strncpy(_fullbase, (base + "/" + name).c_str(), sizeof(_fullbase));
+  strncpy(_will_topic, (base + "/" + name + "/$state").c_str(), sizeof(_will_topic)); // we need permanent allocated char*
   _mqttClient = new AsyncMqttClient();
   _mqttClient->setServer(_mqtt_server, _mqtt_port);
-  _mqttClient->setWill(_will_topic, 1, true, "lost");
+  _mqttClient->setWill(_will_topic, 1, true, _last_will);
   _mqttClient->onConnect(s_onConnect);
   _mqttClient->onDisconnect(s_onDisconnect);
   _mqttClient->onMessage(s_onMessage);
@@ -411,17 +410,17 @@ int HOMIE_Device::reconnectCount() {
 }
 
 void HOMIE_Device::publishConfig() {
-  publish(_fullbase + String("/$state"), "init", true);
-  publish(_fullbase + String("/$homie"), "3.0.1", true);
-  publish(_fullbase + String("/$name"), _name, true);
-  publish(_fullbase + String("/$localip"), WiFi.localIP().toString(), true);
-  publish(_fullbase + String("/$mac"), WiFi.macAddress(), true);
-  publish(_fullbase + String("/$fw/name"), _firmware, true);
-  publish(_fullbase + String("/$fw/version"), _version, true);
-  publish(_fullbase + String("/$implementation"), "arduino esp32", true);
-  publish(_fullbase + String("/$stats"), "uptime", true);
-  publish(_fullbase + String("/$stats/uptime"), millis()/1000, true);
-  publish(_fullbase + String("/$stats/interval"), _heartbeat_interval_ms/1000, true);
+  sub_publish("/$state", "init", true);
+  sub_publish("/$homie", "3.0.1", true);
+  sub_publish("/$name", _name, true);
+  sub_publish("/$localip", WiFi.localIP().toString(), true);
+  sub_publish("/$mac", WiFi.macAddress(), true);
+  sub_publish("/$fw/name", _firmware, true);
+  sub_publish("/$fw/version", _version, true);
+  sub_publish("/$implementation", "arduino esp32", true);
+  sub_publish("/$stats", "uptime", true);
+  sub_publish("/$stats/uptime", millis()/1000, true);
+  sub_publish("/$stats/interval", _heartbeat_interval_ms/1000, true);
   String nodes = String("");
   for(auto it : _nodes) {
     if(!nodes.isEmpty()) {
@@ -429,32 +428,29 @@ void HOMIE_Device::publishConfig() {
     }
     nodes += it->getName();
   }
-  publish(_fullbase + String("/$nodes"), nodes, true);
+  sub_publish("/$nodes", nodes, true);
   for(auto it : _nodes) {
-    it->publishConfig(_fullbase, _mqttClient);
+    it->publishConfig(String(_fullbase), _mqttClient);
   }
-  publish(_fullbase + String("/$state"), "ready", true);
+  sub_publish("/$state", "ready", true);
 }
 
-void HOMIE_Device::publish(String topic, const char* msg, bool retain) {
+void HOMIE_Device::sub_publish(const char* subtopic, const char* msg, bool retain) {
   if (!_mqttClient->connected()) {
     return;
   }
-  _mqttClient->publish( topic.c_str(), 1, retain, msg);
+  char buffer[60];
+  strncpy(buffer, _fullbase, sizeof(buffer));
+  strncat(buffer, subtopic, sizeof(buffer) - strlen(buffer));
+  _mqttClient->publish(buffer, 1, retain, msg);
 }
 
-void HOMIE_Device::publish(String topic, String msg, bool retain) {
-  if (!_mqttClient->connected()) {
-    return;
-  }
-  _mqttClient->publish( topic.c_str(), 1, retain, msg.c_str());
+void HOMIE_Device::sub_publish(const char* subtopic, String msg, bool retain) {
+  sub_publish(subtopic, msg.c_str(), retain);
 }
 
-void HOMIE_Device::publish(String topic, int data, bool retain) {
-  if (!_mqttClient->connected()) {
-    return;
-  }
-  _mqttClient->publish( topic.c_str(), 1, retain, String(data).c_str());
+void HOMIE_Device::sub_publish(const char* subtopic, int data, bool retain) {
+  sub_publish( subtopic, String(data).c_str(), retain);
 }
 
 void HOMIE_Device::sendUpdates(HOMIE_Property* ident) {
@@ -462,6 +458,6 @@ void HOMIE_Device::sendUpdates(HOMIE_Property* ident) {
     return;
   }
   for(auto it : _nodes) {
-    it->publishValue(_fullbase, _mqttClient, ident);
+    it->publishValue(String(_fullbase), _mqttClient, ident);
   }
 }
