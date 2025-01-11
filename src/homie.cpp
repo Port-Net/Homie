@@ -9,20 +9,23 @@
 //TimerHandle_t mqttReconnectTimer;
 //TimerHandle_t mqttHeartbeatTimer;
 
-HOMIE_Property::HOMIE_Property(String name) : _name(name) {
-  _description = name;
-  _name.toLowerCase();
+HOMIE_Property::HOMIE_Property(const char* name) {
+  strncpy(_name, name, sizeof(_name));
+  strncpy(_description, name, sizeof(_description));
+  for(int i = 0; strlen(_name); ++i) {
+    _name[i] = tolower(_name[i]);
+  }
   _settable = false;
   _retained = true;
-  _datatype = String("integer");
-  _format = String("");
-  _unit = "";
-  _ID = _name;
+  strncpy(_datatype, "integer", sizeof(_datatype));
+  _format[0] = '\0';
+  _unit[0] = '\0';
+  strncpy(_ID, _name, sizeof(_ID));
   _only_direct = false;
 }
 
-HOMIE_Property& HOMIE_Property::description(String description) {
-  _description = description;
+HOMIE_Property& HOMIE_Property::description(const char* description) {
+  strncpy(_description, description, sizeof(_description));
   return *this;
 }
 
@@ -41,53 +44,53 @@ HOMIE_Property& HOMIE_Property::onlyDirect(bool direct) {
   return *this;
 }
 
-HOMIE_Property& HOMIE_Property::datatype(String datatype) {
-  _datatype = datatype;
+HOMIE_Property& HOMIE_Property::datatype(const char* datatype) {
+  strncpy(_datatype, datatype, sizeof(_datatype));
   return *this;
 }
 
-HOMIE_Property& HOMIE_Property::format(String format) {
-  _format = format;
+HOMIE_Property& HOMIE_Property::format(const char* format) {
+  strncpy(_format, format, sizeof(_format));
   return *this;
 }
 
-HOMIE_Property& HOMIE_Property::unit(String unit) {
-  _unit = unit;
+HOMIE_Property& HOMIE_Property::unit(const char* unit) {
+  strncpy(_unit, unit, sizeof(_unit));
   return *this;
 }
 
-HOMIE_Property& HOMIE_Property::ID(String id) {
-  _ID = id;
+HOMIE_Property& HOMIE_Property::ID(const char* id) {
+  strncpy(_ID, id, sizeof(_ID));
   return *this;
 }
 
-HOMIE_Property& HOMIE_Property::setSetCallback(void (*callback)(HOMIE_Property* prop, String msg)) {
+HOMIE_Property& HOMIE_Property::setSetCallback(void (*callback)(HOMIE_Property* prop, const char* msg)) {
   _set_callback = callback;
   return *this;
 }
 
-HOMIE_Property& HOMIE_Property::setGetCallback(String (*callback)(HOMIE_Property* prop)) {
+HOMIE_Property& HOMIE_Property::setGetCallback(bool (*callback)(HOMIE_Property* prop, char* result)) {
   _get_callback = callback;
   return *this;
 }
 
-String HOMIE_Property::getName() {
+const char* HOMIE_Property::getName() {
   return _name;
 }
 
-String HOMIE_Property::getDatatype() {
+const char* HOMIE_Property::getDatatype() {
   return _datatype;
 }
 
-String HOMIE_Property::getFormat() {
+const char* HOMIE_Property::getFormat() {
   return _format;
 }
 
-String HOMIE_Property::getUnit() {
+const char* HOMIE_Property::getUnit() {
   return _unit;
 }
 
-String HOMIE_Property::getID() {
+const char* HOMIE_Property::getID() {
   return(_ID);
 }
 
@@ -99,8 +102,19 @@ bool HOMIE_Property::retained() {
   return _retained;
 }
 
-void HOMIE_Property::processSet(String topic, String msg) {
-  if(topic != _name + String("/set")) {
+void HOMIE_Property::processSet(const char* topic, const char* msg) {
+  char* p = strchr(topic, '/');
+  if(!p) {
+    return;
+  }
+  int len = p - topic;
+  if(strlen(_name) != len) {
+    return;
+  }
+  if(strncmp(topic, _name, p - topic)) {
+    return;
+  }
+  if(strncmp(p, "/set", 4)) {
     return;
   }
   if(_settable && _set_callback) {
@@ -108,67 +122,93 @@ void HOMIE_Property::processSet(String topic, String msg) {
   }
 }
 
-void HOMIE_Property::publishValue(String topic, AsyncMqttClient* mqttClient, bool direct) {
+void HOMIE_Property::publishValue(const char* topic, AsyncMqttClient* mqttClient, bool direct) {
   if(_only_direct && !direct) {
     return;
   }
-  String my_topic = topic + String("/") + _name;
+  char my_topic[strlen(topic) + strlen(_name) + 2];
+  strncpy(my_topic, topic, sizeof(my_topic));
+  strncat(my_topic, "/", sizeof(my_topic) - strlen(my_topic));
+  strncat(my_topic, _name, sizeof(my_topic) - strlen(my_topic));
   if(_get_callback) {
-    String msg = _get_callback(this);
-    mqttClient->publish(my_topic.c_str(), 1, _retained, msg.c_str());
+    char result_msg[100];
+    if(_get_callback(this, result_msg)) {
+      mqttClient->publish(my_topic, 1, _retained, result_msg);
+    }
   }
 }
 
-void HOMIE_Property::unpublishConfig(String topic, AsyncMqttClient* mqttClient) {
-  String my_topic = topic + String("/") + _name;
-  //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
-  mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, "");
-  mqttClient->publish( (my_topic + String("/$settable")).c_str(), 1, true, "");
-  mqttClient->publish( (my_topic + String("/$datatype")).c_str(), 1, true, "");
-  if(_format != "") {
-    mqttClient->publish( (my_topic + String("/$format")).c_str(), 1, true, "");
-  }
-  if(_unit != "") {
-    mqttClient->publish( (my_topic + String("/$unit")).c_str(), 1, true, "");
-  }
-}
-
-void HOMIE_Property::publishConfig(String topic, AsyncMqttClient* mqttClient) {
-  String my_topic = topic + String("/") + _name;
-  //mqttClient->publish(new_topic.c_str(), 1, false, msg.c_str());
-  mqttClient->publish( (my_topic + String("/$name")).c_str(), 1, true, _description.c_str());
-  mqttClient->publish( (my_topic + String("/$settable")).c_str(), 1, true, _settable ? "true" : "false");
+void HOMIE_Property::unpublishConfig(const char* topic, AsyncMqttClient* mqttClient) {
+  char my_topic[strlen(topic) + strlen(_name) + 2];
+  strncpy(my_topic, topic, sizeof(my_topic));
+  strncat(my_topic, "/", sizeof(my_topic) - strlen(my_topic));
+  strncat(my_topic, _name, sizeof(my_topic) - strlen(my_topic));
+  sub_publish(mqttClient, my_topic, "/$name", "", true);
+  sub_publish(mqttClient, my_topic, "/$settable", "", true);
+  sub_publish(mqttClient, my_topic, "/$datatype", "", true);
   if(!_retained) {
-    mqttClient->publish( (my_topic + String("/$retained")).c_str(), 1, true, "false");
+    sub_publish(mqttClient, my_topic, "/$retained", "", true);
   }
-  mqttClient->publish( (my_topic + String("/$datatype")).c_str(), 1, true, _datatype.c_str());
   if(_format != "") {
-    mqttClient->publish( (my_topic + String("/$format")).c_str(), 1, true, _format.c_str());
+    sub_publish(mqttClient, my_topic, "/$format", "", true);
   }
   if(_unit != "") {
-    mqttClient->publish( (my_topic + String("/$unit")).c_str(), 1, true, _unit.c_str());
+    sub_publish(mqttClient, my_topic, "/$unit", "", true);
+  }
+}
+
+void HOMIE_Property::publishConfig(const char* topic, AsyncMqttClient* mqttClient) {
+  char my_topic[strlen(topic) + strlen(_name) + 6]; //also space for "/set"
+  strncpy(my_topic, topic, sizeof(my_topic));
+  strncat(my_topic, "/", sizeof(my_topic) - strlen(my_topic));
+  strncat(my_topic, _name, sizeof(my_topic) - strlen(my_topic));
+  sub_publish(mqttClient, my_topic, "/$name", _description, true);
+  sub_publish(mqttClient, my_topic, "/$settable", _settable ? "true" : "false", true);
+  if(!_retained) {
+    sub_publish(mqttClient, my_topic, "/$retained", "false", true);
+  }
+  sub_publish(mqttClient, my_topic, "/$datatype", _datatype, true);
+  if(_format != "") {
+    sub_publish(mqttClient, my_topic, "/$format", _format, true);
+  }
+  if(_unit != "") {
+    sub_publish(mqttClient, my_topic, "/$unit", _unit, true);
   }
   if(_settable) {
-    mqttClient->subscribe((my_topic + String("/set")).c_str(), 1);
+    strncat(my_topic, "/set", sizeof(my_topic) - strlen(my_topic));
+    mqttClient->subscribe(my_topic, 1);
   }
 
+}
+
+void HOMIE_Property::sub_publish(AsyncMqttClient* mqttClient, const char* topic, const char* subtopic, const char* msg, bool retain) {
+  if (!mqttClient->connected()) {
+    return;
+  }
+  char new_subtopic[sizeof(topic) + sizeof(subtopic) + 2];
+  strncpy(new_subtopic, topic, sizeof(new_subtopic));
+  strncat(new_subtopic, subtopic, sizeof(new_subtopic) - strlen(new_subtopic));
+  mqttClient->publish(new_subtopic, 1, retain, msg);
 }
 
 //////////////////////////////////////
 
-HOMIE_Node::HOMIE_Node(String name) : _name(name) {
-  _description = name;
-  _name.toLowerCase();
-  _type = "";
+HOMIE_Node::HOMIE_Node(const char* name) {
+  strncpy(_name, name, sizeof(_name));
+  strncpy(_description, name, sizeof(_description));
+  for(int i = 0; strlen(_name); ++i) {
+    _name[i] = tolower(_name[i]);
+  }
+  _type[0] = '\0';
 }
 
-HOMIE_Node& HOMIE_Node::description(String name) {
-  _description = name;
+HOMIE_Node& HOMIE_Node::description(const char* name) {
+  strncpy(_description, name, sizeof(_description));
   return *this;
 }
 
-HOMIE_Node& HOMIE_Node::type(String type) {
-  _type = type;
+HOMIE_Node& HOMIE_Node::type(const char* type) {
+  strncpy(_type, type, sizeof(_type));
   return *this;
 }
 
@@ -183,26 +223,34 @@ void HOMIE_Node::removeProperties() {
   _properties.clear();
 }
 
-String HOMIE_Node::getName() {
+const char* HOMIE_Node::getName() {
   return(_name);
 }
 
-void HOMIE_Node::processSet(String topic, String msg) {
-  int idx = topic.indexOf("/");
-  if(idx <= 0) {
+void HOMIE_Node::processSet(const char* topic, const char* msg) {
+  char* p = strchr(topic, '/');
+  //int idx = topic.indexOf("/");
+  if(!p) {
     return;
   }
-  String node = topic.substring(0, idx);
-  if(node == _name) {
-    String new_topic = topic.substring(idx + 1);
-    for(auto it : _properties) {
-      it->processSet(new_topic, msg);
-    }
+  int len = p - topic;
+  if(strlen(_name) != len) {
+    return;
+  }
+  if(strncmp(topic, _name, p - topic)) {
+    return;
+  }
+  for(auto it : _properties) {
+    it->processSet(p + 1, msg);
   }
 }
 
-void HOMIE_Node::publishValue(String topic, AsyncMqttClient* mqttClient, HOMIE_Property* ident) {
-  String new_topic = topic + String("/") + _name;
+void HOMIE_Node::publishValue(const char* topic, AsyncMqttClient* mqttClient, HOMIE_Property* ident) {
+  //String new_topic = topic + String("/") + _name;
+  char new_topic[60];
+  strncpy(new_topic, topic, sizeof(new_topic));
+  strncat(new_topic, "/", sizeof(new_topic) - strlen(new_topic));
+  strncat(new_topic, _name, sizeof(new_topic) - strlen(new_topic));
   for(auto it : _properties) {
     if(!ident) {
       it->publishValue(new_topic, mqttClient);
@@ -212,20 +260,27 @@ void HOMIE_Node::publishValue(String topic, AsyncMqttClient* mqttClient, HOMIE_P
   }
 }
 
-void HOMIE_Node::unpublishConfig(String topic, AsyncMqttClient* mqttClient) {
-  String new_topic = topic + String("/") + _name;
-  mqttClient->publish( (new_topic + String("/$name")).c_str(), 1, true, "");
-  mqttClient->publish( (new_topic + String("/$type")).c_str(), 1, true, "");
-  mqttClient->publish( (new_topic + String("/$properties")).c_str(), 1, true, "");
+void HOMIE_Node::unpublishConfig(const char* topic, AsyncMqttClient* mqttClient) {
+  char new_topic[60];
+  strncpy(new_topic, topic, sizeof(new_topic));
+  strncat(new_topic, "/", sizeof(new_topic) - strlen(new_topic));
+  strncat(new_topic, _name, sizeof(new_topic) - strlen(new_topic));
+  //strncat(subtopic, )
+  sub_publish(mqttClient, new_topic, "/$name", "", true);
+  sub_publish(mqttClient, new_topic, "/$type", "", true);
+  sub_publish(mqttClient, new_topic, "/$properties", "", true);
   for(auto it : _properties) {
     it->unpublishConfig(new_topic, mqttClient);
   }
 }
 
-void HOMIE_Node::publishConfig(String topic, AsyncMqttClient* mqttClient) {
-  String new_topic = topic + String("/") + _name;
-  mqttClient->publish( (new_topic + String("/$name")).c_str(), 1, true, _description.c_str());
-  mqttClient->publish( (new_topic + String("/$type")).c_str(), 1, true, _type.c_str());
+void HOMIE_Node::publishConfig(const char* topic, AsyncMqttClient* mqttClient) {
+  char new_topic[60];
+  strncpy(new_topic, topic, sizeof(new_topic));
+  strncat(new_topic, "/", sizeof(new_topic) - strlen(new_topic));
+  strncat(new_topic, _name, sizeof(new_topic) - strlen(new_topic));
+  sub_publish(mqttClient, new_topic, "/$name", _description, true);
+  sub_publish(mqttClient, new_topic, "/$type", _type, true);
   String props = String("");
   for(auto it : _properties) {
     if(!props.isEmpty()) {
@@ -233,17 +288,28 @@ void HOMIE_Node::publishConfig(String topic, AsyncMqttClient* mqttClient) {
     }
     props += it->getName();
   }
-  mqttClient->publish( (new_topic + String("/$properties")).c_str(), 1, true, props.c_str());
+  sub_publish(mqttClient, new_topic, "/$properties", props.c_str(), true);
   for(auto it : _properties) {
     it->publishConfig(new_topic, mqttClient);
   }
 }
 
+void HOMIE_Node::sub_publish(AsyncMqttClient* mqttClient, const char* topic, const char* subtopic, const char* msg, bool retain) {
+  if (!mqttClient->connected()) {
+    return;
+  }
+  char new_subtopic[sizeof(topic) + sizeof(subtopic) + 2];
+  strncpy(new_subtopic, topic, sizeof(new_subtopic));
+  strncat(new_subtopic, subtopic, sizeof(new_subtopic) - strlen(new_subtopic));
+  mqttClient->publish(new_subtopic, 1, retain, msg);
+}
+
+
 ////////////////////////////////////////
 
-HOMIE_Device::HOMIE_Device(String mqtt_server, uint16_t mqtt_port) : _mqtt_port(mqtt_port) {
+HOMIE_Device::HOMIE_Device(const char* mqtt_server, uint16_t mqtt_port) : _mqtt_port(mqtt_port) {
   getThis(this);
-  strncpy(_mqtt_server, mqtt_server.c_str(), sizeof(_mqtt_server)); // we need permanent allocated char*
+  strncpy(_mqtt_server, mqtt_server, sizeof(_mqtt_server)); // we need permanent allocated char*
   _mqttClient = nullptr;
   _heartbeat_interval_ms = MQTT_HEARTBEAT;
   _reconnect_count = 0;
@@ -265,7 +331,7 @@ bool HOMIE_Device::removeNode(String name) {
   if(!p) {
     return false;
   }
-  p->unpublishConfig(String(_fullbase), _mqttClient);
+  p->unpublishConfig(_fullbase, _mqttClient);
   p->removeProperties();
   /*
   std::erase_if(_nodes, [&name] (const HOMIE_Node& n) { return n.getName() == name; });
@@ -276,13 +342,13 @@ bool HOMIE_Device::removeNode(String name) {
   return true;
 }
 
-HOMIE_Device& HOMIE_Device::setFirmware(String fw) {
-  strncpy(_firmware, fw.c_str(), sizeof(_firmware));
+HOMIE_Device& HOMIE_Device::setFirmware(const char* fw) {
+  strncpy(_firmware, fw, sizeof(_firmware));
   return *this;
 }
 
-HOMIE_Device& HOMIE_Device::setVersion(String ver) {
-  strncpy(_version, ver.c_str(), sizeof(_version));
+HOMIE_Device& HOMIE_Device::setVersion(const char* ver) {
+  strncpy(_version, ver, sizeof(_version));
   return *this;
 }
 
@@ -305,7 +371,7 @@ void HOMIE_Device::onConnect(bool sessionPresent) {
   //Serial.println(sessionPresent);
   publishConfig();
   for(auto it : _nodes) {
-    it->publishValue(String(_fullbase), _mqttClient);
+    it->publishValue(_fullbase, _mqttClient);
   }
   xTimerStart(_mqttHeartbeatTimer, 0);
   _reconnect_count = 0;
@@ -333,7 +399,7 @@ void HOMIE_Device::onMessage(char* topic, char* payload, AsyncMqttClientMessageP
   }
   topicstring = topicstring.substring(strlen(_fullbase) + 1);
   for(auto it : _nodes) {
-    it->processSet(topicstring, payloadstring);
+    it->processSet(topic, pl);
   }
 }
 
@@ -367,10 +433,13 @@ void HOMIE_Device::setHeartbeatInterval(uint32_t hb_time_ms) {
 }
 
 
-void HOMIE_Device::begin(String name, String base) {
-  strncpy(_name, name.c_str(), sizeof(_name));
-  strncpy(_fullbase, (base + "/" + name).c_str(), sizeof(_fullbase));
-  strncpy(_will_topic, (base + "/" + name + "/$state").c_str(), sizeof(_will_topic)); // we need permanent allocated char*
+void HOMIE_Device::begin(const char* name, const char* base) {
+  strncpy(_name, name, sizeof(_name));
+  strncpy(_fullbase, base, sizeof(_fullbase));
+  strncat(_fullbase, "/", sizeof(_fullbase) - strlen(_fullbase));
+  strncat(_fullbase, name, sizeof(_fullbase) - strlen(_fullbase));
+  strncpy(_will_topic, _fullbase, sizeof(_will_topic)); // we need permanent allocated char*
+  strncat(_will_topic, "/$state", sizeof(_will_topic) - strlen(_will_topic));
   _mqttClient = new AsyncMqttClient();
   _mqttClient->setServer(_mqtt_server, _mqtt_port);
   _mqttClient->setWill(_will_topic, 1, true, _last_will);
@@ -430,7 +499,7 @@ void HOMIE_Device::publishConfig() {
   }
   sub_publish("/$nodes", nodes, true);
   for(auto it : _nodes) {
-    it->publishConfig(String(_fullbase), _mqttClient);
+    it->publishConfig(_fullbase, _mqttClient);
   }
   sub_publish("/$state", "ready", true);
 }
@@ -458,6 +527,6 @@ void HOMIE_Device::sendUpdates(HOMIE_Property* ident) {
     return;
   }
   for(auto it : _nodes) {
-    it->publishValue(String(_fullbase), _mqttClient, ident);
+    it->publishValue(_fullbase, _mqttClient, ident);
   }
 }

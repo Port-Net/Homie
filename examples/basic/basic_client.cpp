@@ -6,36 +6,43 @@
 
 HOMIE_Device homie(MY_MQTT_SERVER);
 
-void homie_set_callback(HOMIE_Property* prop, String msg) {
-  if(prop->getName() == "state") {
-    if(msg == "True") {
+void homie_set_callback(HOMIE_Property* prop, const char* msg) {
+  String propname(prop->getName());
+  String msgstring(msg);
+  if(propname == "state") {
+    if(msgstring == "True") {
       Serial.println("Switched on");
     } else {
       Serial.println("Switched off");
     }
-  } else if(prop->getName() == "brightness") {
-    int br = msg.toInt();
+  } else if(propname == "brightness") {
+    int br = msgstring.toInt();
     Serial.printf("Brightness set to %d\r\n", br);
-  } else if(prop->getName() == "color") {
-    int col = msg.toInt();
+  } else if(propname == "color") {
+    int col = msgstring.toInt();
     Serial.printf("Color set to %d\r\n", col);
   }
 }
 
-String homie_get_callback(HOMIE_Property* prop) {
-  if(prop->getName() == "state") {
-    return "True";
+bool homie_get_callback(HOMIE_Property* prop, char* buffer) {
+  String propname(prop->getName());
+  if(propname == "state") {
+    strcpy(buffer, "true");
+    return true;
   } else if(prop->getName() == "brightness") {
-    return String(42);
+    sprintf(buffer, "%d", 42);
+    return true;
   } else if(prop->getName() == "color") {
-    return String(4711);
+    strcpy(buffer, String(4711).c_str());
+    return true;
   }
-  return "nothing";
+  return false;
 }
 
-String homie_get_test_callback(HOMIE_Property* prop) {
+bool homie_get_test_callback(HOMIE_Property* prop, char* buffer) {
   __unused(prop);
-  return "testvalue";
+  return true;
+  strcpy(buffer, "testvalue");
 }
 
 void setup() {

@@ -11,70 +11,72 @@
 
 class HOMIE_Property {
 public:
-  HOMIE_Property(String name);
-  HOMIE_Property& description(String description);
+  HOMIE_Property(const char* name);
+  HOMIE_Property& description(const char* description);
   HOMIE_Property& settable(bool settable);
   HOMIE_Property& retained(bool retained);
   HOMIE_Property& onlyDirect(bool direct);
-  HOMIE_Property& datatype(String datatype);
-  HOMIE_Property& format(String format);
-  HOMIE_Property& unit(String unit);
-  HOMIE_Property& ID(String id);
-  HOMIE_Property& setSetCallback(void (*callback)(HOMIE_Property* prop, String msg));
-  HOMIE_Property& setGetCallback(String (*callback)(HOMIE_Property* prop));
-  String getName();
-  String getDatatype();
-  String getFormat();
-  String getUnit();
-  String getID();
+  HOMIE_Property& datatype(const char* datatype);
+  HOMIE_Property& format(const char* format);
+  HOMIE_Property& unit(const char* unit);
+  HOMIE_Property& ID(const char* id);
+  HOMIE_Property& setSetCallback(void (*callback)(HOMIE_Property* prop, const char* msg));
+  HOMIE_Property& setGetCallback(bool (*callback)(HOMIE_Property* prop, char* result));
+  const char* getName();
+  const char* getDatatype();
+  const char* getFormat();
+  const char* getUnit();
+  const char* getID();
   bool settable();
   bool retained();
-  void processSet(String topic, String msg);
-  void publishValue(String topic, AsyncMqttClient* _mqttClient, bool direct = false);
-  void unpublishConfig(String topic, AsyncMqttClient* _mqttClient);
-  void publishConfig(String topic, AsyncMqttClient* _mqttClient);
+  void processSet(const char* topic, const char* msg);
+  void publishValue(const char* topic, AsyncMqttClient* _mqttClient, bool direct = false);
+  void unpublishConfig(const char* topic, AsyncMqttClient* _mqttClient);
+  void publishConfig(const char* topic, AsyncMqttClient* _mqttClient);
 private:
-  String _name;  
-  String _description;  
-  String _ID;  
+  void sub_publish(AsyncMqttClient* mqttclient, const char* topic, const char* subtopic, const char* msg, bool retain = false);
+  char _name[20];  
+  char _description[40];  
+  char _ID[20];  
   bool _settable;
   bool _retained;
-  String _datatype;  
-  String _format;
-  String _unit;
+  char _datatype[15];  
+  char _format[80];
+  char _unit[10];
   bool _only_direct;
 
-  void (*_set_callback)(HOMIE_Property* prop, String msg);
-  String (*_get_callback)(HOMIE_Property* prop);
+  void (*_set_callback)(HOMIE_Property* prop, const char* msg);
+  bool (*_get_callback)(HOMIE_Property* prop, char* result);
 };
 
 class HOMIE_Node {
 public:
-  HOMIE_Node(String name);
-  HOMIE_Node& description(String description);
-  HOMIE_Node& type(String type);
+  HOMIE_Node(const char* name);
+  HOMIE_Node& description(const char* description);
+  HOMIE_Node& type(const char* type);
   void addProperty(HOMIE_Property* prop);
   void removeProperties();
-  String getName();
-  void processSet(String topic, String msg);
-  void publishValue(String topic, AsyncMqttClient* _mqttClient, HOMIE_Property* ident = nullptr);
-  void unpublishConfig(String topic, AsyncMqttClient* _mqttClient);
-  void publishConfig(String topic, AsyncMqttClient* _mqttClient);
+  const char* getName();
+  void processSet(const char* topic, const char* msg);
+  void publishValue(const char* topic, AsyncMqttClient* mqttClient, HOMIE_Property* ident = nullptr);
+  void unpublishConfig(const char* topic, AsyncMqttClient* mqttClient);
+  void publishConfig(const char* topic, AsyncMqttClient* mqttClient);
 private:
-  String _name;
-  String _description;
-  String _type;
+  void sub_publish(AsyncMqttClient* mqttclient, const char* topic, const char* subtopic, const char* msg, bool retain = false);
+  char _name[20];
+  char _description[40];
+  char _type[20];
   std::vector<HOMIE_Property*> _properties;
 };
 
 class HOMIE_Device {
 public:
-  HOMIE_Device(String mqtt_server, uint16_t mqtt_port = 1883);
+  HOMIE_Device(const char* mqtt_server, uint16_t mqtt_port = 1883);
   HOMIE_Device& addNode(HOMIE_Node* node);
   bool removeNode(String name);
-  HOMIE_Device& setFirmware(String fw);
-  HOMIE_Device& setVersion(String ver);
-  void begin(String name, String base = "homie");
+  HOMIE_Device& setFirmware(const char* fw);
+  HOMIE_Device& setVersion(const char* ver);
+  void begin(const char* name, const char* base = "homie");
   void setHeartbeatInterval(uint32_t hb_time_ms);
   void sendUpdates(HOMIE_Property* ident = nullptr);
   void connect();
@@ -113,7 +115,6 @@ private:
   uint32_t _heartbeat_interval_ms;
   TimerHandle_t _mqttReconnectTimer;
   TimerHandle_t _mqttHeartbeatTimer;
-  void (*_callback)(String topic, String msg);
   std::vector<HOMIE_Node*> _nodes;
 };
 
