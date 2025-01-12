@@ -157,6 +157,10 @@ void HOMIE_Property::unpublishConfig(const char* topic, AsyncMqttClient* mqttCli
   if(strlen(_unit)) {
     sub_publish(mqttClient, my_topic, "/$unit", "", true);
   }
+  if(_settable) {
+    strncat(my_topic, "/set", sizeof(my_topic) - strlen(my_topic));
+    mqttClient->unsubscribe(my_topic);
+  }
 }
 
 void HOMIE_Property::publishConfig(const char* topic, AsyncMqttClient* mqttClient) {
@@ -180,7 +184,6 @@ void HOMIE_Property::publishConfig(const char* topic, AsyncMqttClient* mqttClien
     strncat(my_topic, "/set", sizeof(my_topic) - strlen(my_topic));
     mqttClient->subscribe(my_topic, 1);
   }
-
 }
 
 void HOMIE_Property::sub_publish(AsyncMqttClient* mqttClient, const char* topic, const char* subtopic, const char* msg, bool retain) {
@@ -400,7 +403,7 @@ void HOMIE_Device::onMessage(char* topic, char* payload, AsyncMqttClientMessageP
   char pl[len+1];
   pl[len] = '\0';
   strncpy(pl, payload, len);
-  if(strcmp(topic, _fullbase)) {
+  if(strncmp(topic, _fullbase, sizeof(_fullbase))) {
     return;
   }
   char new_topic[strlen(topic) - strlen(_fullbase) + 1];
