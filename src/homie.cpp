@@ -403,7 +403,7 @@ void HOMIE_Device::onMessage(char* topic, char* payload, AsyncMqttClientMessageP
   char pl[len+1];
   pl[len] = '\0';
   strncpy(pl, payload, len);
-  if(strncmp(topic, _fullbase, sizeof(_fullbase))) {
+  if(strncmp(topic, _fullbase, strlen(_fullbase))) {
     return;
   }
   char new_topic[strlen(topic) - strlen(_fullbase) + 1];
