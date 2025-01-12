@@ -286,13 +286,13 @@ void HOMIE_Node::publishConfig(const char* topic, AsyncMqttClient* mqttClient) {
   for(auto it : _properties) {
     l += strlen(it->getName()) + 1;
   }
-  char props[l];
+  char props[l] = "";
   bool first = true;
   for(auto it : _properties) {
     if(!first) {
-      strncpy(props, ",", sizeof(props));
+      strncat(props, ",", sizeof(props));
     }
-    strncpy(props, it->getName(), sizeof(props));
+    strncat(props, it->getName(), sizeof(props));
     first  = false;
   }
 
@@ -501,13 +501,13 @@ void HOMIE_Device::publishConfig() {
   for(auto it : _nodes) {
     l += strlen(it->getName()) + 1;
   }
-  char nodes[l];
+  char nodes[l] = "";
   bool first = true;
   for(auto it : _nodes) {
     if(!first) {
-      strncpy(nodes, ",", sizeof(nodes));
+      strncat(nodes, ",", sizeof(nodes));
     }
-    strncpy(nodes, it->getName(), sizeof(nodes));
+    strncat(nodes, it->getName(), sizeof(nodes));
     first  = false;
   }
   sub_publish("/$nodes", nodes, true);
