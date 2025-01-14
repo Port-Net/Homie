@@ -1,13 +1,6 @@
 
 #include <Arduino.h>
 #include "homie.h"
-//#include "raffstore.h"
-//#include <ArduinoJson.h>
-//#include <YAMLDuino.h>
-
-//AsyncMqttClient mqttClient;
-//TimerHandle_t mqttReconnectTimer;
-//TimerHandle_t mqttHeartbeatTimer;
 
 HOMIE_Property::HOMIE_Property(const char* name) {
   strncpy(_name, name, sizeof(_name));
@@ -344,9 +337,6 @@ bool HOMIE_Device::removeNode(const char* name) {
   }
   p->unpublishConfig(_fullbase, _mqttClient);
   p->removeProperties();
-  /*
-  std::erase_if(_nodes, [&name] (const HOMIE_Node& n) { return n.getName() == name; });
-  */
   std::erase(_nodes, p);
   delete p;
   publishConfig();
@@ -424,7 +414,7 @@ void HOMIE_Device::Heartbeat() {
   } else {
     if (WiFi.isConnected()) {
       _reconnect_count++;
-      if(_reconnect_count > 10) {
+      if(_reconnect_count > 3) {
         delete _mqttClient;
         _mqttClient = new AsyncMqttClient();
         _mqttClient->setServer(_mqtt_server, _mqtt_port);
